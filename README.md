@@ -11,6 +11,6 @@ tokens, certificates, internal IP addresses, and other credentials.
 ## Current status
 
 The Kubernetes and node prerequisites documented in the record were applied to
-the three dedicated `ntap` worker nodes. The remaining deployment blocker is
-the missing Ubuntu `nfs-common` package on those workers; without it,
-Kubernetes cannot mount the MDE NFS configuration export.
+the three dedicated `ntap` worker nodes, including the Ubuntu NFS client. The
+remaining deployment blocker is server-side: the designated NFS export path is
+not currently exported, and the server advertises NFSv3 only.

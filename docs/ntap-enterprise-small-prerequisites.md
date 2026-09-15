@@ -3,7 +3,7 @@
 **Date:** 2026-09-15  
 **Scope:** `ntap` RKE2 cluster, three dedicated worker nodes  
 **Target:** MDE AIDE Enterprise Small deployment  
-**Status:** Partially complete — NFS client prerequisite remains blocked
+**Status:** Partially complete — NFS export configuration remains blocked
 
 ## Scope and safety
 
@@ -84,29 +84,43 @@ Post-change node inspection confirmed all three dedicated workers remained
 The temporary host-configuration workload completed on all three target
 workers before cleanup.
 
-## Remaining blocker: NFS client support
+## NFS client remediation
 
-An NFS validation DaemonSet was scheduled on all three dedicated workers and
-attempted to mount the designated MDE configuration export. Each pod failed
-before reaching the NFS server because the Ubuntu 24.04 host OS did not have
-the `mount.nfs` helper installed.
+The missing NFS client dependency was remediated through a temporary privileged
+DaemonSet restricted to the three MDE workers. It installed Ubuntu 24.04
+package `nfs-common` on every worker and confirmed that the host `mount.nfs`
+helper and NFS kernel filesystem support were available. The temporary
+installer DaemonSet was removed after validation.
+
+**Effect:** the worker-side NFS client prerequisite is complete.
+
+## Remaining blocker: NFS server export configuration
+
+The NFS validation workload was retried after the client remediation. The
+server is reachable from every worker, but it advertises NFSv3 only. A
+per-worker forced-NFSv3 mount probe of the designated export path returned
+`No such file or directory` from the server on all three workers. The path did
+not appear in the server's advertised export list.
 
 | Item | Result |
 | --- | --- |
-| Export accessibility | Not yet validated; mount could not start locally. |
-| Cause | Missing `mount.nfs` helper on every worker. |
-| Required package | `nfs-common` (Ubuntu 24.04). |
-| Affected nodes | All three dedicated MDE workers. |
-| Unaffected prerequisites | Namespace, labels, sysctls, `sunrpc`, and host directories were applied successfully. |
+| Export accessibility | Not validated; the designated server-side export path is absent. |
+| Worker client state | `nfs-common`, `mount.nfs`, and NFS kernel support are present on all three workers. |
+| Server protocol | NFSv3 only. |
+| Server response | `No such file or directory` for the designated export path on all three workers. |
+| Unaffected prerequisites | Namespace, labels, sysctls, `sunrpc`, host directories, and worker NFS client installation were applied successfully. |
 
 ## Next approved remediation and verification
 
-1. Install `nfs-common` on each of the three dedicated MDE worker nodes.
-2. Re-run a temporary NFS validation workload.
-3. Confirm the export mounts read/write on every worker and that a process
+1. Create and export the designated MDE share from the NFS server, or provide
+   the correct already-exported path.
+2. Enable an NFS version compatible with the MDE deployment configuration, or
+   configure the deployment storage definition explicitly for NFSv3.
+3. Re-run a temporary NFS validation workload.
+4. Confirm the export mounts read/write on every worker and that a process
    running as UID:GID `4321:4321` can create and remove a test file.
-4. Remove the validation workload.
-5. Record the final validation result and any network/export-permission gap.
+5. Remove the validation workload.
+6. Record the final validation result and any network/export-permission gap.
 
 The NFS server address and export path are intentionally redacted from this
 public repository. They should be supplied through the protected deployment

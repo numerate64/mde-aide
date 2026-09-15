@@ -12,5 +12,5 @@ tokens, certificates, internal IP addresses, and other credentials.
 
 The Kubernetes and node prerequisites documented in the record were applied to
 the three dedicated `ntap` worker nodes, including the Ubuntu NFS client. The
-remaining deployment blocker is server-side: the designated NFS export path is
-not currently exported, and the server advertises NFSv3 only.
+designated NFS export now mounts and passes a per-worker write test as UID:GID
+`4321:4321`.

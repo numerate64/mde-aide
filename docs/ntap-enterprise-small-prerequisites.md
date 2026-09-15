@@ -3,7 +3,7 @@
 **Date:** 2026-09-15  
 **Scope:** `ntap` RKE2 cluster, three dedicated worker nodes  
 **Target:** MDE AIDE Enterprise Small deployment  
-**Status:** Partially complete — NFS export configuration remains blocked
+**Status:** Prerequisites validated — NFS read/write test passed on all three workers
 
 ## Scope and safety
 
@@ -94,33 +94,26 @@ installer DaemonSet was removed after validation.
 
 **Effect:** the worker-side NFS client prerequisite is complete.
 
-## Remaining blocker: NFS server export configuration
+## NFS final validation
 
-The NFS validation workload was retried after the client remediation. The
-server is reachable from every worker, but it advertises NFSv3 only. A
-per-worker forced-NFSv3 mount probe of the designated export path returned
-`No such file or directory` from the server on all three workers. The path did
-not appear in the server's advertised export list.
+After the NFS export was corrected, the validation DaemonSet was retried on
+all three dedicated MDE workers. Every pod mounted the designated export and,
+while running as UID:GID `4321:4321`, created, inspected, and removed a unique
+test file. Each test file was owned by `4321:4321` with mode `0660`.
 
 | Item | Result |
 | --- | --- |
-| Export accessibility | Not validated; the designated server-side export path is absent. |
+| Export accessibility | Mounted successfully from every dedicated MDE worker. |
 | Worker client state | `nfs-common`, `mount.nfs`, and NFS kernel support are present on all three workers. |
-| Server protocol | NFSv3 only. |
-| Server response | `No such file or directory` for the designated export path on all three workers. |
-| Unaffected prerequisites | Namespace, labels, sysctls, `sunrpc`, host directories, and worker NFS client installation were applied successfully. |
+| UID:GID validation | Passed as `4321:4321` on all three workers. |
+| File validation | Create, inspect, and removal passed; test files had mode `0660`. |
+| Cleanup | The temporary validation DaemonSet was deleted after evidence collection. |
 
 ## Next approved remediation and verification
 
-1. Create and export the designated MDE share from the NFS server, or provide
-   the correct already-exported path.
-2. Enable an NFS version compatible with the MDE deployment configuration, or
-   configure the deployment storage definition explicitly for NFSv3.
-3. Re-run a temporary NFS validation workload.
-4. Confirm the export mounts read/write on every worker and that a process
-   running as UID:GID `4321:4321` can create and remove a test file.
-5. Remove the validation workload.
-6. Record the final validation result and any network/export-permission gap.
+No NFS remediation remains. Preserve the current export ownership and access
+controls for the MDE service account, and re-run the validation after any NFS
+server, export, or worker image change.
 
 The NFS server address and export path are intentionally redacted from this
 public repository. They should be supplied through the protected deployment
